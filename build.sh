@@ -2,9 +2,12 @@
 
 source /build_environment.sh
 
+godep go test -v ./...
+
+
 # Compile statically linked version of package
 echo "Building $pkgName"
-`CGO_ENABLED=${CGO_ENABLED:-0} go build -a --installsuffix cgo --ldflags="${LDFLAGS:--s}" $pkgName`
+`CGO_ENABLED=${CGO_ENABLED:-0} godep go build -a --installsuffix cgo --ldflags="${LDFLAGS:--s}" $pkgName`
 
 # Grab the last segment from the package name
 name=${pkgName##*/}
