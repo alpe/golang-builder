@@ -8,6 +8,9 @@ RUN wget -nv https://get.docker.com/builds/Linux/x86_64/docker-1.3.3 -O /usr/bin
 RUN go get github.com/pwaller/goupx
 RUN go get github.com/tools/godep
 RUN	go get golang.org/x/tools/cmd/cover
+RUN	go get golang.org/x/tools/cmd/vet
+RUN go get -u github.com/golang/lint/golint
+
 
 VOLUME /src
 WORKDIR /src

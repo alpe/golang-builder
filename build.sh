@@ -6,6 +6,9 @@ godep go test -coverprofile cover.out -v ./...
 
 godep go tool cover -html=cover.out -o cover.html
 
+godep go vet ./... > go_vet.txt
+golint ./... > golint.txt
+
 # Compile statically linked version of package
 echo "Building $pkgName"
 `CGO_ENABLED=${CGO_ENABLED:-0} godep go build -a --installsuffix cgo --ldflags="${LDFLAGS:--s}" $pkgName`
