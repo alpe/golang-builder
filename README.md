@@ -1,5 +1,5 @@
 # golang-builder
-Based on [].
+Heavily inspired by:[CenturyLinkLabs golang-builder](https://github.com/CenturyLinkLabs/golang-builder).
 
 ~~~bash
 set -e
@@ -16,6 +16,10 @@ docker push registry:5000/$service:$branch-$BUILD_NUMBER
 
 ## Test local
 ~~~
+# build new image
+docker build -t $(boot2docker ip):5000/go_builder_image .
+
+# run image with example project
 docker run --rm \
   -v $(pwd):/src \
   -v /var/run/docker.sock:/var/run/docker.sock \

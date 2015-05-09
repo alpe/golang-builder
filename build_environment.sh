@@ -37,3 +37,5 @@ else
   # Get all package dependencies
   go get -t -d -v ./...
 fi
+# change work dir to 
+cd $pkgPath

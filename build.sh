@@ -2,8 +2,9 @@
 
 source /build_environment.sh
 
-godep go test -v ./...
+godep go test -coverprofile cover.out -v ./...
 
+godep go tool cover -html=cover.out -o cover.html
 
 # Compile statically linked version of package
 echo "Building $pkgName"
