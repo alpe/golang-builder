@@ -11,6 +11,9 @@ RUN	go get golang.org/x/tools/cmd/cover
 RUN	go get golang.org/x/tools/cmd/vet
 RUN go get -u github.com/golang/lint/golint
 
+# Custom tools 
+RUN apt-get install -y libxml2-utils
+
 
 VOLUME /src
 WORKDIR /src
