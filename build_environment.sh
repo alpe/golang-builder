@@ -13,6 +13,11 @@ pkgName="$(go list -e -f '{{.ImportComment}}' 2>/dev/null || true)"
 
 if [ -z "$pkgName" ];
 then
+    pkgName="$(git config --get remote.origin.url | sed -r s/.+alpe\\/\(.+\)\(.git\)$/github.com\\/alpe\\/\\1/g || true)"
+fi
+
+if [ -z "$pkgName" ];
+then
   echo "Error: Must add canonical import path to root package"
   exit 992
 fi
@@ -29,13 +34,7 @@ mkdir -p "$(dirname "$pkgPath")"
 # Link source dir into GOPATH
 ln -sf /src "$pkgPath"
 
-if [ -e "$pkgPath/Godeps/_workspace" ];
-then
-  # Add local godeps dir to GOPATH
-  GOPATH=$pkgPath/Godeps/_workspace:$GOPATH
-else
-  # Get all package dependencies
-  go get -t -d -v ./...
-fi
-# change work dir to 
+# change work dir to
 cd $pkgPath
+
+gpm install
