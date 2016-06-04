@@ -13,7 +13,14 @@ pkgName="$(go list -e -f '{{.ImportComment}}' 2>/dev/null || true)"
 
 if [ -z "$pkgName" ];
 then
-    pkgName="$(git config --get remote.origin.url | sed -r s/.+alpe\\/\(.+\)\(.git\)$/github.com\\/alpe\\/\\1/g || true)"
+    if [ -f "/src/glide.yaml" ];
+    then
+        pkgName="$(glide name)"
+    fi
+    if [ -f "/src/Godeps/Godeps.json" ];
+    then
+        pkgName="$(cat /src/Godeps/Godeps.json | jq --raw-output '.ImportPath')"
+    fi
 fi
 
 if [ -z "$pkgName" ];
@@ -37,4 +44,22 @@ ln -sf /src "$pkgPath"
 # change work dir to
 cd $pkgPath
 
-gpm install
+echo "--------------------------------------"
+echo "* Resolve dependencies"
+if [ -e "$pkgPath/vendor" ];
+then
+    echo "unsing vendor folder"
+elif [ -d "$pkgPath/Godeps" ];
+then
+   gpm install
+elif [ -d "$pkgPath/Godeps/_workspace" ];
+then
+  # Add local godeps dir to GOPATH
+  GOPATH=$pkgPath/Godeps/_workspace:$GOPATH
+elif [ -f "$pkgPath/glide.yaml" ];
+then
+    glide install
+else
+  # Get all package dependencies
+  go get -t -d -v ./...
+fi

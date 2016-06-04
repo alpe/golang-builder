@@ -3,34 +3,65 @@
 source /build_environment.sh
 
 mkdir buildreport
+novendor_dirs=$(go list ./... | grep -v '/vendor/')
 
-go vet ./... > buildreport/go_vet.txt || true
-golint ./... > buildreport/golint.txt || true
-errcheck ./... > buildreport/errcheck.txt || true
+echo "Using nonvendor dirs: \n$novendor_dirs"
+echo "--------------------------------------"
 
-go test -race ./...
+echo "* Run tests with race detector"
+go test -race ${novendor_dirs}
+
+echo "--------------------------------------"
+echo "* Run vet + golint"
+for f in go_vet.txt golint.txt
+do
+    touch buildreport/${f}
+done
+
+for d in $novendor_dirs
+do
+    go vet ${d} 2>> buildreport/go_vet.txt || true
+    golint ${d} >> buildreport/golint.txt || true
+done
+
+echo "--------------------------------------"
+echo "* Run errcheck"
+errcheck ${novendor_dirs} > buildreport/errcheck.txt || true
+
 
 # Run test coverage on each subdirectories and merge the coverage profile.
-echo "mode: count" > buildreport/profile.cov
+echo "--------------------------------------"
+echo "* Building coverage report"
 
-# Standard go tooling behavior is to ignore dirs with leading underscors
-for dir in $(find . -maxdepth 10 -not -path './.git*' -not -path '*/_*' -type d);
+echo "mode: count" > buildreport/profile.cov
+coverDirs=$novendor_dirs
+for dir in $coverDirs
 do
-if ls $dir/*.go &> /dev/null; then
-    go test -covermode=count -coverprofile=$dir/profile.tmp $dir
-    if [ -f $dir/profile.tmp ]
-    then
-        cat $dir/profile.tmp | tail -n +2 >> buildreport/profile.cov
-        rm $dir/profile.tmp
+    path="$GOPATH/src/$dir"
+    if ls $path/*.go &> /dev/null; then
+        go test -covermode=count -coverprofile=$path/profile.tmp $dir
+        if [ -f $path/profile.tmp ]
+        then
+            cat $path/profile.tmp | tail -n +2 >> buildreport/profile.cov
+            rm $path/profile.tmp
+        fi
     fi
-fi
 done
 
 go tool cover -html buildreport/profile.cov -o buildreport/cover.html
 
 # Compile statically linked version of package
-echo "Building $pkgName"
-`CGO_ENABLED=${CGO_ENABLED:-0} go build -a --installsuffix cgo --ldflags="${LDFLAGS:--s}" $pkgName`
+# see https://golang.org/cmd/link/ for all ldflags
+echo "--------------------------------------"
+echo "* Building Go binary: $pkgName version $BUILD_VERSION"
+flags=(-a -installsuffix cgo)
+ldflags=('-s -X main.version='$BUILD_VERSION)
+
+CGO_ENABLED=${CGO_ENABLED:-0} go build \
+    "${flags[@]}" \
+    -ldflags "${ldflags[@]}" \
+    "$pkgName"
+
 
 # Grab the last segment from the package name
 name=${pkgName##*/}
@@ -42,9 +73,12 @@ fi
 
 if [ -e "/var/run/docker.sock" ] && [ -e "./Dockerfile" ];
 then
-  # Default TAG_NAME to package name if not set explicitly
-  tagName=${tagName:-"$name":latest}
 
-  # Build the image from the Dockerfile in the package directory
-  docker build -t $tagName .
+    # Default TAG_NAME to package name if not set explicitly
+    tagName=${tagName:-"$name":latest}
+    echo "--------------------------------------"
+    echo "* Building Docker image: $tagName"
+
+    # Build the image from the Dockerfile in the package directory
+    docker build -t $tagName .
 fi
