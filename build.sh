@@ -5,7 +5,8 @@ source /build_environment.sh
 mkdir buildreport
 novendor_dirs=$(go list ./... | grep -v '/vendor/')
 
-echo "Using nonvendor dirs: \n$novendor_dirs"
+echo "Using nonvendor dirs:"
+echo "$novendor_dirs"
 echo "--------------------------------------"
 
 echo "* Run tests with race detector"
@@ -50,35 +51,40 @@ done
 
 go tool cover -html buildreport/profile.cov -o buildreport/cover.html
 
-# Compile statically linked version of package
-# see https://golang.org/cmd/link/ for all ldflags
 echo "--------------------------------------"
-echo "* Building Go binary: $pkgName version $BUILD_VERSION"
-flags=(-a -installsuffix cgo)
-ldflags=('-s -X main.version='$BUILD_VERSION)
+main_packages=$(go list ./... |grep -v vendor |grep cmd || true)
+main_packages+=( ${pkgName} )
+for pkg in ${main_packages[@]}
+do
+    # Grab the last segment from the package name
+    name=${pkg##*/}
+    echo "* Building Go binary: $pkg"
 
-CGO_ENABLED=${CGO_ENABLED:-0} go build \
-    "${flags[@]}" \
-    -ldflags "${ldflags[@]}" \
-    "$pkgName"
+    flags=(-a -installsuffix cgo)
+    ldflags=('-s -X main.version='$BUILD_VERSION)
 
+    # Compile statically linked version of package
+    # see https://golang.org/cmd/link/ for all ldflags
+    CGO_ENABLED=${CGO_ENABLED:-0} go build \
+        "${flags[@]}" \
+        -ldflags "${ldflags[@]}" \
+        -o "$goPath/src/$pkg/$name" \
+        "$pkg"
 
-# Grab the last segment from the package name
-name=${pkgName##*/}
+    if [[ $COMPRESS_BINARY == "true" ]];
+    then
+      goupx $name
+    fi
 
-if [[ $COMPRESS_BINARY == "true" ]];
-then
-  goupx $name
-fi
+    if [ -e "/var/run/docker.sock" ] && [ -e "$goPath/src/$pkg/Dockerfile" ];
+    then
 
-if [ -e "/var/run/docker.sock" ] && [ -e "./Dockerfile" ];
-then
+        # Default TAG_NAME to package name if not set explicitly
+        tagName=${tagName:-"$name":latest}
+        echo "--------------------------------------"
+        echo "* Building Docker image: $tagName"
 
-    # Default TAG_NAME to package name if not set explicitly
-    tagName=${tagName:-"$name":latest}
-    echo "--------------------------------------"
-    echo "* Building Docker image: $tagName"
-
-    # Build the image from the Dockerfile in the package directory
-    docker build -t $tagName .
-fi
+        # Build the image from the Dockerfile in the package directory
+        docker build -t $tagName .
+    fi
+done
