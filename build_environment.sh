@@ -13,13 +13,21 @@ pkgName="$(go list -e -f '{{.ImportComment}}' 2>/dev/null || true)"
 
 if [ -z "$pkgName" ];
 then
-    if [ -f "/src/glide.yaml" ];
+    if [ -f "/src/glide.yaml" ]
     then
         pkgName="$(glide name)"
-    fi
-    if [ -f "/src/Godeps/Godeps.json" ];
+    elif [ -f "/src/Godeps/Godeps.json" ]
     then
         pkgName="$(cat /src/Godeps/Godeps.json | jq --raw-output '.ImportPath')"
+    else
+        url=$(git config --get remote.origin.url)
+        if [[ "$url" == http* ]]
+        then
+            pkgName=$(echo ${url} | sed -E 's|https?://(.+)|\1|')
+        elif [[ "$url" == git@* ]]
+        then
+            pkgName=$(echo ${url} | sed -E 's|git@(.+):(.+).git|\1/\2|')
+        fi
     fi
 fi
 
