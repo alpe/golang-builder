@@ -85,6 +85,6 @@ do
         echo "* Building Docker image: $tagName"
 
         # Build the image from the Dockerfile in the package directory
-        docker build -t $tagName .
+        docker build --pull -t $tagName .
     fi
 done
