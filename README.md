@@ -59,16 +59,11 @@ other issues. Though a lot of our projects use it therefore I support it until a
 
 ## Build local
 
-* Create `.netrc` for [gpm](https://github.com/pote/gpm) to access private github repositories.
-You'll need a new [github token](https://github.com/settings/tokens).
-
-~~~netrc
-machine github.com login <token>
-~~~
+You'll need a [github token](https://github.com/settings/tokens) that you can pass to the container. It will be persisted in the `.netrc` for [gpm](https://github.com/pote/gpm) to access private github repositories.
 
 * Build new go-builder docker image
 ~~~bash
-docker build -t go-builder .
+docker build --build-arg GITHUB_TOKEN=<your-token> -t go-builder .
 ~~~
 
 * Run container to build binary and code metrics

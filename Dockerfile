@@ -29,6 +29,7 @@ RUN mkdir -p bin ; \
     rm -rf bin/linux-amd64
 
 
+ARG GITHUB_TOKEN
 RUN echo "machine github.com login $GITHUB_TOKEN" >/root/.netrc
 
 COPY build_environment.sh /
