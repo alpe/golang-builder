@@ -12,8 +12,7 @@ RUN go get github.com/pwaller/goupx \
 	&& go get golang.org/x/tools/cmd/cover \
     && go get -u github.com/golang/lint/golint \
     && go get github.com/kisielk/errcheck \
-    && go get github.com/cespare/prettybench \
-    && go get github.com/uber/go-torch
+    && go get -u github.com/jstemmer/go-junit-report
 
 # Install dependency management tools
 # gpm
@@ -34,6 +33,8 @@ RUN echo "machine github.com login $GITHUB_TOKEN" >/root/.netrc
 
 COPY build_environment.sh /
 COPY build.sh /
+
+RUN chmod -R 777 "$GOPATH"
 
 VOLUME /src
 WORKDIR /src

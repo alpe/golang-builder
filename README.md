@@ -81,6 +81,23 @@ docker run --rm \
   go-builder mytag
 ~~~
 
+## SSL Certificates
+As the scratch image does not contain any SSL certificates you'd need to add them yourself. 
+A public bundle is available on [curl's download site] (https://curl.haxx.se/docs/caextract.html).
+When you store it in your repo you can copy it in your `Dockerfile` to the image.
+`
+COPY ca-bundle.pem /etc/ssl/certs/ca-certificates.crt
+`
+## Timezones
+
+"The time zone database needed by LoadLocation may not be present on all systems, especially non-Unix systems. LoadLocation looks in the directory or uncompressed zip file named by the ZONEINFO environment variable, if any, then looks in known installation locations on Unix systems, and finally looks in $GOROOT/lib/time/zoneinfo.zip."[resource](https://golang.org/pkg/time/)
+You can find a copy in `$GOROOT/lib/time/zoneinfo.zip`
+When you store it in your repo you can copy it in your `Dockerfile` to the image.
+
+`
+ENV ZONEINFO /zoneinfo.zip
+COPY zoneinfo.zip /
+`
 
 ### Other Resources
 * Dependency management tools https://github.com/golang/go/wiki/PackageManagementTools

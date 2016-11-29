@@ -1,16 +1,15 @@
-#!/bin/bash -e
+#!/bin/bash
+
+set -e -o pipefail
 
 source /build_environment.sh
 
 mkdir buildreport
 novendor_dirs=$(go list ./... | grep -v '/vendor/')
 
+echo "--------------------------------------"
 echo "Using nonvendor dirs:"
 echo "$novendor_dirs"
-echo "--------------------------------------"
-
-echo "* Run tests with race detector"
-go test -race ${novendor_dirs}
 
 echo "--------------------------------------"
 echo "* Run vet + golint"
@@ -27,35 +26,51 @@ done
 
 echo "--------------------------------------"
 echo "* Run errcheck"
-errcheck ${novendor_dirs} > buildreport/errcheck.txt || true
+errcheck -ignoretests ${novendor_dirs} > buildreport/errcheck.txt || true
 
-
-# Run test coverage on each subdirectories and merge the coverage profile.
-echo "--------------------------------------"
-echo "* Building coverage report"
-
-echo "mode: count" > buildreport/profile.cov
-coverDirs=$novendor_dirs
-for dir in $coverDirs
-do
-    path="$GOPATH/src/$dir"
-    if ls $path/*.go &> /dev/null; then
-        go test -covermode=count -coverprofile=$path/profile.tmp $dir
-        if [ -f $path/profile.tmp ]
-        then
-            cat $path/profile.tmp | tail -n +2 >> buildreport/profile.cov
-            rm $path/profile.tmp
+if [ "$SKIP_TESTS" == "yes" ]
+then
+    echo "--------------------------------------"
+    echo "* Skipping Tests: disabled"
+else
+    # Run test coverage on each subdirectories and merge the coverage profile.
+    echo "--------------------------------------"
+    echo " Run tests with race detector"
+    START=$(date +%s)
+    echo "mode: atomic" > buildreport/profile.cov
+    test_output_file="buildreport/test-stdout.txt"
+    for dir in ${novendor_dirs}
+    do
+        path="$GOPATH/src/$dir"
+        if ls $path/*.go &> /dev/null; then
+            go test --race -covermode=atomic -coverprofile=$path/profile.tmp $dir  | tee -a ${test_output_file}
+            if [ -f $path/profile.tmp ]
+            then
+                cat $path/profile.tmp | tail -n +2 >> buildreport/profile.cov
+                rm $path/profile.tmp
+            fi
         fi
-    fi
-done
-
-go tool cover -html buildreport/profile.cov -o buildreport/cover.html
+    done
+    echo "* Building coverage report"
+    go tool cover -html buildreport/profile.cov -o buildreport/cover.html
+    echo "* Building junit style test report"
+    cat ${test_output_file} | go-junit-report > buildreport/test-report.xml
+    END=$(date +%s)
+    echo "* Completed: $((END-START))s"
+fi
 
 echo "--------------------------------------"
 main_packages=$(go list ./... |grep -v vendor |grep cmd || true)
-main_packages+=( ${pkgName} )
+if [[ -z main_packages ]];
+then
+    main_packages=( ${pkgName} )
+fi
+
+touch buildreport/docker-artifacts
+
 for pkg in ${main_packages[@]}
 do
+    START=$(date +%s)
     # Grab the last segment from the package name
     name=${pkg##*/}
     echo "* Building Go binary: $pkg"
@@ -75,16 +90,26 @@ do
     then
       goupx $name
     fi
+    END=$(date +%s)
+    echo "* Completed: $((END-START))s"
 
+    echo "--------------------------------------"
     if [ -e "/var/run/docker.sock" ] && [ -e "$goPath/src/$pkg/Dockerfile" ];
     then
-
-        # Default TAG_NAME to package name if not set explicitly
-        tagName=${tagName:-"$name":latest}
-        echo "--------------------------------------"
+        START=$(date +%s)
+        # Default to latest if version is `not set explicitly
+        tagName=${name}:${versionName:-latest}
         echo "* Building Docker image: $tagName"
 
         # Build the image from the Dockerfile in the package directory
-        docker build --pull -t $tagName .
+        docker build --pull -t ${tagName} -f "$goPath/src/$pkg/Dockerfile" .
+        echo ${tagName} >> buildreport/docker-artifacts
+
+        END=$(date +%s)
+        echo "* Completed: $((END-START))s"
+    else
+        echo "* Skipping Docker build"
     fi
 done
+echo "--------------------------------------"
+echo "* done"

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-tagName=$1
+versionName=$1
 
 if ( find /src -maxdepth 0 -empty | read v );
 then
@@ -54,6 +54,7 @@ cd $pkgPath
 
 echo "--------------------------------------"
 echo "* Resolve dependencies"
+START=$(date +%s)
 if [ -e "$pkgPath/vendor" ];
 then
     echo "unsing vendor folder"
@@ -71,3 +72,6 @@ else
   # Get all package dependencies
   go get -t -d -v ./...
 fi
+END=$(date +%s)
+echo "* Completed: $((END-START))s"
+
