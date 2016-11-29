@@ -27,7 +27,7 @@ done
 
 echo "--------------------------------------"
 echo "* Run errcheck"
-errcheck ${novendor_dirs} > buildreport/errcheck.txt || true
+errcheck -ignoretests ${novendor_dirs} > buildreport/errcheck.txt || true
 
 
 # Run test coverage on each subdirectories and merge the coverage profile.
