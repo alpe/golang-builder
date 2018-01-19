@@ -28,7 +28,7 @@ echo "--------------------------------------"
 echo "* Run errcheck"
 errcheck -ignoretests ${novendor_dirs} > buildreport/errcheck.txt || true
 
-if [ "$SKIP_TESTS" == "yes" ]
+if [ "$SKIP_TESTS" == "true" ]
 then
     echo "--------------------------------------"
     echo "* Skipping Tests: disabled"
@@ -39,11 +39,12 @@ else
     START=$(date +%s)
     echo "mode: atomic" > buildreport/profile.cov
     test_output_file="buildreport/test-stdout.txt"
+    test_tags="${TEST_TAGS:+-tags }$TEST_TAGS"
     for dir in ${novendor_dirs}
     do
         path="$GOPATH/src/$dir"
         if ls $path/*.go &> /dev/null; then
-            go test --race -covermode=atomic -coverprofile=$path/profile.tmp $dir  | tee -a ${test_output_file}
+            go test "${test_tags:-}"--race -covermode=atomic -coverprofile=$path/profile.tmp $dir  | tee -a ${test_output_file}
             if [ -f $path/profile.tmp ]
             then
                 cat $path/profile.tmp | tail -n +2 >> buildreport/profile.cov
@@ -68,6 +69,14 @@ fi
 
 touch buildreport/docker-artifacts
 
+flags=(-a -installsuffix cgo)
+ldflags=('-s -X main.version='$BUILD_VERSION)
+if [[ -z $CGO_ENABLED || $CGO_ENABLED == 0 ]];
+then
+    build_tags="-tags nocgo"
+fi
+
+
 for pkg in ${main_packages[@]}
 do
     START=$(date +%s)
@@ -75,14 +84,12 @@ do
     name=${pkg##*/}
     echo "* Building Go binary: $pkg"
 
-    flags=(-a -installsuffix cgo)
-    ldflags=('-s -X main.version='$BUILD_VERSION)
-
     # Compile statically linked version of package
     # see https://golang.org/cmd/link/ for all ldflags
     CGO_ENABLED=${CGO_ENABLED:-0} go build \
         "${flags[@]}" \
         -ldflags "${ldflags[@]}" \
+        -tags netgo ${build_tags} \
         -o "$goPath/src/$pkg/$name" \
         "$pkg"
 

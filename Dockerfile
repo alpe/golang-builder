@@ -20,7 +20,7 @@ RUN wget https://raw.githubusercontent.com/pote/gpm/v1.3.2/bin/gpm -O /usr/local
   chmod +x /usr/local/bin/gpm
 
 # glide
-ENV glide_version=v0.12.3
+ENV glide_version=v0.13.1
 RUN mkdir -p bin ; \
     curl -L  https://github.com/Masterminds/glide/releases/download/${glide_version}/glide-${glide_version}-linux-amd64.tar.gz | \
     tar -xz -C bin ; \
